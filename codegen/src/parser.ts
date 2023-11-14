@@ -252,7 +252,8 @@ const handleTypes = (typeAliasMap: TypeAliasMap) => (interfaceName: string) => (
     case ts.SyntaxKind.TypeLiteral:         return handleTypeLiteral(typeAliasMap)(interfaceName)(fieldName)(type as unknown as ts.TypeLiteralNode)
     case ts.SyntaxKind.ArrayType:           return handleArrayType(typeAliasMap)(interfaceName)(fieldName)(type as unknown as ts.ArrayTypeNode)
     case ts.SyntaxKind.UnionType:           return handleUnionType(typeAliasMap)(interfaceName)(fieldName)(type as unknown as ts.UnionTypeNode)
-    default: throw ("Got a type that I don't know: " + ts.SyntaxKind[type.kind])
+    // case ts.SyntaxKind.IntersectionType:    return handleUnionType(typeAliasMap)(interfaceName)(fieldName)(type as unknown as ts.UnionTypeNode)
+    default: throw new Error("Got a type that I don't know: " + ts.SyntaxKind[type.kind] + " " + interfaceName + " " + fieldName) 
   }
 }
 
@@ -302,13 +303,15 @@ export const handleInterface = (isComponentProps: boolean) => (typeAliasMap: Typ
 
   const properties: ts.PropertySignature[] = getPropertySignatures(int)
   const names: string[] = properties.map((p) => getPropertyName(p.name))
+  console.log("handleInterface.names", names)
   const propertyTypes: ts.TypeNode[] = properties.map((prop) => prop.type).filter((type) => type !== undefined) as ts.TypeNode[]
   
   if(properties.length !== propertyTypes.length) throw ("Properties and types don't match" + int)
-
   const interfaceName = int.name.escapedText.toString()
+  console.log("handleInterface.interfaceName", interfaceName);
   const allFields = properties.map((prop, i) => {
     const name = names[i]
+    console.log("handleInterface.allFields.name", name);
     const fieldType = handleTypes(typeAliasMap)(interfaceName)(name)(propertyTypes[i])
     const isOptional = prop.questionToken !== undefined
     const comments: string | undefined = getJSDoc(prop)
@@ -316,6 +319,7 @@ export const handleInterface = (isComponentProps: boolean) => (typeAliasMap: Typ
     return field
   })
   .concat(parentFields)
+  console.log("handleInterface after allFields")
 
   const uniqueFields = (fields: Field[]): Field[] => {
     const map: {[key:string]:boolean} = {}
